@@ -215,19 +215,30 @@ func _torch(at: Vector3) -> void:
 	add_child(light)
 
 func _mountains() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1709
-	for i in range(36):
-		var mesh := CylinderMesh.new()
-		mesh.top_radius = 0
-		mesh.bottom_radius = rng.randf_range(35,65)
-		mesh.height = rng.randf_range(25,65)
-		mesh.radial_segments = 5
-		var mountain := MeshInstance3D.new()
-		mountain.mesh = mesh
-		mountain.material_override = _stone(Color("#33313e"))
-		var a := i*TAU/36.0
-		var radius := rng.randf_range(190,260)
-		mountain.position = Vector3(sin(a)*radius,-4,cos(a)*radius)
-		mountain.rotation.y = rng.randf()*TAU
-		add_child(mountain)
+	# Continuous eroded ridges, not isolated cone/pyramid placeholders.
+	var noise := FastNoiseLite.new()
+	noise.seed = 1709
+	noise.frequency = 0.014
+	noise.fractal_octaves = 5
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for z in range(-50,50):
+		for x in range(-50,50):
+			if Vector2(x,z).length()<16.0:
+				continue
+			for corner in [Vector2(0,0),Vector2(0,1),Vector2(1,0),Vector2(1,0),Vector2(0,1),Vector2(1,1)]:
+				var px: float = (x+corner.x)*8.0
+				var pz: float = (z+corner.y)*8.0
+				var distance_from_center := Vector2(px,pz).length()
+				var rise := smoothstep(125.0,210.0,distance_from_center)
+				var ridge := 1.0-absf(noise.get_noise_2d(px,pz))
+				var elevation := (ridge*ridge*ridge*65.0+noise.get_noise_2d(px*2.1,pz*2.1)*14.0)*rise-12.0
+				st.add_vertex(Vector3(px,elevation,pz))
+	st.generate_normals()
+	var mountain := MeshInstance3D.new()
+	mountain.mesh = st.commit()
+	var rock := StandardMaterial3D.new()
+	rock.albedo_color = Color("#20212a")
+	rock.roughness = 0.98
+	mountain.material_override = rock
+	add_child(mountain)
