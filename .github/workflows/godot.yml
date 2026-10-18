@@ -1,18 +1,82 @@
-name: Godot project checks
+name: Build Crazy Windows EXE
 
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  godot-headless:
+  build-windows:
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.4.1
     steps:
-      - name: Checkout
+      - name: Checkout project
         uses: actions/checkout@v4
-      - name: Import project
+
+      - name: Make Godot Windows export templates available
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          if [ -d /root/.local/share/godot/export_templates ]; then
+            cp -a /root/.local/share/godot/export_templates/. "$HOME/.local/share/godot/export_templates/"
+          fi
+          echo "Export templates:"
+          find "$HOME/.local/share/godot/export_templates" -maxdepth 2 -name 'windows_release_x86_64.exe' -print
+
+      - name: Import and validate project
         run: godot --headless --path . --import --quit
-      - name: Launch world map briefly
+
+      - name: Smoke test main scene
         run: godot --headless --path . --quit-after 30
+
+      - name: Export standalone Windows EXE
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --path . --export-release "Windows Desktop" build/Crazy.exe
+          test -s build/Crazy.exe
+          ls -lh build/
+
+      - name: Upload downloadable EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Crazy-Windows-${{ github.run_number }}
+          path: build/Crazy.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-release:
+    name: Publish Windows EXE release
+    needs: build-windows
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download built EXE
+        uses: actions/download-artifact@v4
+        with:
+          name: Crazy-Windows-${{ github.run_number }}
+          path: build
+
+      - name: Create public pre-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -s build/Crazy.exe
+          gh release create "prototype-${{ github.run_number }}" "build/Crazy.exe" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Crazy prototype #${{ github.run_number }} — Windows" \
+            --notes "Early playable Windows prototype. Download Crazy.exe and launch it. No Godot installation or API key required. This is not a finished game." \
+            --prerelease \
+            --latest=false
