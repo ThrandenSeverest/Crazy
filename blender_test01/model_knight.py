@@ -53,7 +53,7 @@ def mesh(name,verts,faces,material,group, bevel=0,subdiv=0):
     if bevel:
         b=ob.modifiers.new('Hand-worn rim / edge glints','BEVEL');b.width=bevel;b.segments=3
         if hasattr(b,'affect'): b.affect='EDGES'
-        normal=ob.modifiers.new('Weighted plate normals','WEIGHTED_NORMAL');normal.keep_sharp=True
+        # Smooth normals are calculated directly on the loft surface; no Auto Smooth dependency.
     return ob
 
 def ellipsoid(name,location,scale,material,group,res=24):
@@ -88,7 +88,7 @@ def surface(name, vfunc, nu,nv,material,group,solid=.0,subdiv=1):
     if solid:
         m=obj.modifiers.new('Forged plate thickness','SOLIDIFY');m.thickness=solid;m.offset=0
         b=obj.modifiers.new('Rolled and worn rim','BEVEL');b.width=.007;b.segments=2
-        w=obj.modifiers.new('Balanced vertex normals','WEIGHTED_NORMAL');w.keep_sharp=True
+        # Keep the shaped plate subdivisions and bevel only.
     return obj
 
 def path(name, pts, diameter,material,group):
@@ -312,13 +312,17 @@ back=cam('Hero | back three-quarter',(-3.65,5.5,2.4),lens=58)
 side=cam('Hero | accurate side', (6.1,-.8,2.05),lens=58)
 face=cam('Helmet close-up', (1.55,-3.1,2.35),target=(0,0,2.02),lens=75)
 scene=bpy.context.scene
-scene.render.engine='BLENDER_EEVEE_NEXT' if bpy.app.version >= (4, 2, 0) else 'BLENDER_EEVEE'
+scene.render.engine='CYCLES'
+scene.cycles.device='CPU'
+scene.cycles.samples=20
+scene.cycles.use_denoising=True
 scene.render.resolution_x=1100;scene.render.resolution_y=1250;scene.render.resolution_percentage=85
 scene.render.image_settings.file_format='PNG';scene.render.film_transparent=False
 scene.view_settings.view_transform='AgX'
 # Handle version-compatible controls where possible.
 if hasattr(scene,'render'):
     scene.render.image_settings.color_mode='RGBA'
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT,'Crazy_Warlord_Blender_Test01.blend'))
 for name,camera in [('01_front',front),('02_back',back),('03_side',side),('04_helmet',face)]:
     scene.camera=camera
     scene.render.filepath=os.path.join(OUT,name+'.png')
