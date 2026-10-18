@@ -26,3 +26,9 @@ Project: Crazy — a medieval third-person RPG combined with a world-map strateg
 - Add real melee hitboxes/animations and troop command UI.
 - Implement build placement with proper navigation and pathfinding.
 - Improve art and UX without losing functional gameplay.
+
+## CRITICAL: Blender asset and release fidelity gate
+- Do not treat the rejected PR #2 (`art/hero-modular-armor-v1`) or Windows build #14 as a valid art baseline. It regressed from `codex/dark-fortress-visual-pass` and never used Blender. The current feature branch was created from the visual-pass branch to preserve its improvements.
+- Before changing graphics, read `docs/AI_ART_PIPELINE.md` and issue #3. The character must be built on a properly rigged human model with separate armor meshes inside an actual editable Blender `.blend` project. A direct GLB triangulation script and more primitive geometry do not satisfy this requirement.
+- Godot import success is insufficient. Require real character visibility in exported gameplay, multi-angle preview and user reference comparison before advertising another Windows EXE as a visual upgrade.
+- Do not merge a new model into the core gameplay until the isolated model showcase has passed visual inspection. Source asset licenses and provenance are mandatory.
