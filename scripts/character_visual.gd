@@ -17,7 +17,7 @@ var rig: Node3D
 func setup(character_role: String) -> bool:
 	role = character_role
 	steel = _metal(Color("#555b60") if role == "ally" else Color("#373b43"),0.82)
-	trim = _metal(Color("#8c8063"),0.75)
+	trim = _metal(Color("#655c4a"),0.75)
 	leather = _metal(Color("#282023"),0.0)
 	dark = StandardMaterial3D.new()
 	dark.albedo_color = Color("#08090c")
@@ -62,7 +62,7 @@ func setup(character_role: String) -> bool:
 
 func _build_arm(torso: Node3D, side: float) -> void:
 	var arm := _joint(torso,"Arm"+("L" if side<0 else "R"),Vector3(side*0.34,0.39,0))
-	_shell(arm,[Vector3(-0.12,0.19,0.16),Vector3(0,0.20,0.17),Vector3(0.10,0.13,0.13),Vector3(0.13,0.045,0.05)],steel)
+	_shell(arm,[Vector3(-0.12,0.16,0.14),Vector3(0,0.18,0.16),Vector3(0.11,0.11,0.12),Vector3(0.16,0.015,0.025)],steel,8)
 	for i in range(3):
 		_shell(arm,[Vector3(-0.13-i*0.055,0.15-i*0.014,0.14-i*0.01),Vector3(-0.10-i*0.055,0.17-i*0.014,0.15-i*0.01)],steel)
 	if role in ["lord","brute"]:
@@ -102,9 +102,9 @@ func _sword(hand: Node3D) -> void:
 	var weapon := _joint(hand,"Sword",Vector3(0,-0.04,-0.015))
 	_box(weapon,Vector3(0,-0.025,0),Vector3(0.04,0.22,0.04),leather)
 	_box(weapon,Vector3(0,-0.15,0),Vector3(0.31,0.035,0.05),trim)
-	var blade := _shell(weapon,[Vector3(-1.10,0.001,0.003),Vector3(-0.89,0.055,0.012),Vector3(-0.17,0.065,0.015)],steel,4)
+	var blade := _shell(weapon,[Vector3(-0.86,0.001,0.003),Vector3(-0.71,0.055,0.012),Vector3(-0.17,0.065,0.015)],steel,4)
 	blade.rotation.y = PI*0.25
-	_box(weapon,Vector3(0,-0.56,-0.016),Vector3(0.013,0.73,0.005),dark)
+	_box(weapon,Vector3(0,-0.45,-0.016),Vector3(0.013,0.51,0.005),dark)
 	_rivet(weapon,Vector3(0,0.10,0))
 
 func _build_cloth(torso: Node3D) -> void:
@@ -121,7 +121,7 @@ func _build_cloth(torso: Node3D) -> void:
 	st.generate_normals()
 	var cloth := ShaderMaterial.new()
 	cloth.shader = CLOTH
-	cloth.set_shader_parameter("cloth_color",Color("#681a23") if role=="lord" else Color("#302c36"))
+	cloth.set_shader_parameter("cloth_color",Color("#40141d") if role=="lord" else Color("#252631"))
 	_mesh(torso,st.commit(),Vector3.ZERO,cloth)
 	var tabard := _box(torso,Vector3(0,-0.29,-0.19),Vector3(0.20,0.64,0.018),cloth)
 	tabard.rotation.x = 0.12

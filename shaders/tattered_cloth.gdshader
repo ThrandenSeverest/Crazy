@@ -9,7 +9,7 @@ void vertex() {
 }
 void fragment() {
  float weave = sin(UV.x * 650.0) * sin(UV.y * 650.0) * 0.055;
- float fold = 0.7 + 0.3 * sin(UV.x * 35.0 + UV.y * 2.0);
+ float fold = 0.82 + 0.15 * sin(UV.x * 27.0 + UV.y * 2.0);
  float dirt = 1.0 - UV.y * 0.48;
  float tear = fract(sin(floor(UV.x * 47.0) * 127.1) * 43758.5);
  if (UV.y > 0.86 + tear * 0.14) { discard; }

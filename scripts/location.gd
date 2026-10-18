@@ -77,10 +77,10 @@ func _setup_world() -> void:
 	sky.sky_material = sky_material
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#a4a9bd")
-	env.ambient_light_energy = 0.68
+	env.ambient_light_color = Color("#8994a6")
+	env.ambient_light_energy = 0.42
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.1
+	env.tonemap_exposure = 0.95
 	env.glow_enabled = true
 	env.glow_intensity = 0.8
 	env.glow_strength = 0.72
@@ -89,7 +89,7 @@ func _setup_world() -> void:
 	env.ssao_radius = 1.8
 	env.ssao_intensity = 2.2
 	env.fog_enabled = true
-	env.fog_light_color = Color("#504552")
+	env.fog_light_color = Color("#2a262c")
 	env.fog_light_energy = 0.65
 	env.fog_density = 0.0028
 	env.fog_sky_affect = 0.65
@@ -100,22 +100,22 @@ func _setup_world() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42, -28, 0)
 	sun.light_color = Color("#f3b49d")
-	sun.light_energy = 1.65
+	sun.light_energy = 1.05
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 160.0
 	add_child(sun)
-	_solid_box(Vector3(0, -0.7, -20), Vector3(140, 1.4, 180), Color("#55515a"))
+	_solid_box(Vector3(0, -0.7, -20), Vector3(140, 1.4, 180), Color("#33343a"))
 	# A broad, low red sky light keeps silhouettes legible without making the world cheerful.
 	var dusk := DirectionalLight3D.new()
 	dusk.rotation_degrees = Vector3(-26, 152, 0)
 	dusk.light_color = Color("#8593b7")
-	dusk.light_energy = 0.48
+	dusk.light_energy = 0.28
 	add_child(dusk)
 
 func _setup_player() -> void:
 	player = CharacterBody3D.new()
 	player.name = "Player"
-	player.position = Vector3(0, 3, 17)
+	player.position = Vector3(0,7,20) if Game.destination=="castle" else Vector3(0,3,17)
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.43
 	shape.height = 1.85
@@ -161,8 +161,8 @@ func _setup_ui() -> void:
 	plate.add_theme_stylebox_override("panel",frame)
 	root.add_child(plate)
 	health_bar = ProgressBar.new()
-	health_bar.position = Vector2(34,64)
-	health_bar.size = Vector2(390,15)
+	health_bar.position = Vector2(34,56)
+	health_bar.size = Vector2(390,11)
 	health_bar.show_percentage = false
 	health_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var health_fill := StyleBoxFlat.new()
@@ -418,7 +418,7 @@ func _spawn_allies() -> void:
 	for n in range(mini(Game.soldiers, 12)):
 		var figure := Node3D.new()
 		figure.name = "Soldier_%d" % n
-		figure.position = Vector3((n % 4 - 1.5) * 1.5, 0.98, 21 + (n / 4) * 1.8)
+		figure.position = Vector3((n % 4 - 1.5) * 2.4, 0.98, 10 - (n / 4) * 1.8)
 		var visual := _spawn_character_visual(figure, "ally")
 		figure.set_meta("character_visual", visual)
 		add_child(figure)
@@ -518,7 +518,7 @@ func _move_allies(delta: float) -> void:
 		var soldier := allies[n]
 		var col := float(n % 4) - 1.5
 		var row := float(int(n / 4))
-		var pos := anchor + camera_rig.right() * (col * 1.6) - camera_rig.forward() * (3.0 + row * 1.7)
+		var pos := anchor + camera_rig.right() * (col * 2.4) + camera_rig.forward() * (8.0 + row * 1.7)
 		pos.y = 0.98
 		var displacement := pos - soldier.global_position
 		var visual := soldier.get_meta("character_visual") as CharacterVisual

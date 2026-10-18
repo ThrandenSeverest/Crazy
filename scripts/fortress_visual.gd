@@ -9,8 +9,8 @@ var black: StandardMaterial3D
 var ember: StandardMaterial3D
 
 func build() -> void:
-	stone = _stone(Color("#454348"))
-	pale = _stone(Color("#68615b"))
+	stone = _stone(Color("#292b30"))
+	pale = _stone(Color("#434247"))
 	black = StandardMaterial3D.new()
 	black.albedo_color = Color("#0a0c12")
 	ember = StandardMaterial3D.new()
@@ -18,6 +18,7 @@ func build() -> void:
 	ember.emission_enabled = true
 	ember.emission = Color("#e96724")
 	ember.emission_energy_multiplier = 2.0
+	_terrace()
 	# Near curtain walls frame the courtyard, rather than hiding the skyline.
 	for side in [-1.0,1.0]:
 		_wall(Vector3(side*27,0,-2),Vector3(2.5,9,54),true)
@@ -54,6 +55,17 @@ func build() -> void:
 			_box(Vector3(x,0.38,z),Vector3(1.0,0.76,1.0),pale,true)
 			_torch(Vector3(x,0.9,z))
 	_mountains()
+
+func _terrace() -> void:
+	_box(Vector3(0,3.5,21),Vector3(17,1,14),stone,true)
+	for side in [-1.0,1.0]:
+		_wall(Vector3(side*8.0,4.0,21),Vector3(0.65,1.1,14),true)
+		_wall(Vector3(side*5.4,4.0,14.3),Vector3(6.0,1.1,0.65),true)
+		_torch(Vector3(side*7.2,5.2,15))
+		_banner(Vector3(side*7.9,3.3,13.9),Vector2(1.3,2.8))
+	for i in range(16):
+		var height := (16-i)*0.25
+		_box(Vector3(0,height*0.5,13.8-i*0.42),Vector3(4.4,height,0.46),pale,true)
 
 func _stone(color: Color) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()

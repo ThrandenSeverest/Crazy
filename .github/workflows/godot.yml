@@ -38,6 +38,9 @@ jobs:
       - name: Smoke test castle and articulated characters
         run: godot --headless --path . res://scenes/location.tscn --quit-after 90
 
+      - name: Verify actual animation joint movement
+        run: godot --headless --path . --script res://tests/character_smoke.gd
+
       - name: Export standalone Windows EXE
         shell: bash
         run: |

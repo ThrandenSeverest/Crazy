@@ -6,19 +6,20 @@ func _ready() -> void:
 	Game.soldiers = 6
 	var location := load("res://scenes/location.tscn").instantiate() as Node3D
 	add_child(location)
-	for i in range(40):
+	for i in range(100):
 		await get_tree().process_frame
 	location.set_physics_process(false)
 	var camera: Camera3D = location.third_camera
-	camera.global_position = Vector3(2.6,2.15,21.2)
-	camera.look_at(Vector3(0,2.5,-10))
+	camera.global_position = location.player.global_position+Vector3(2.6,1.17,4.2)
+	camera.look_at(Vector3(0,location.player.global_position.y+1.4,-10))
 	await _capture("courtyard")
 	# Human-scale front view to inspect proportion, armour, faceplate and joints.
-	camera.global_position = Vector3(1.8,1.65,13.8)
+	camera.global_position = location.player.global_position+Vector3(1.8,0.67,-3.2)
 	camera.look_at(location.player.global_position+Vector3(0,0.15,0))
 	await _capture("armour")
 	location.player_visual.attack(true)
-	location.player_visual.animator.seek(0.28,true)
+	location.player_visual.animator.advance(0.28)
+	location.player_visual.animator.advance(0.0)
 	location.player_visual.animator.pause()
 	await _capture("attack")
 	print("VISUAL_REVIEW_OK: courtyard, armour, attack")
