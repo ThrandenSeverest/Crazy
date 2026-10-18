@@ -315,7 +315,8 @@ scene=bpy.context.scene
 scene.render.engine='CYCLES'
 scene.cycles.device='CPU'
 scene.cycles.samples=20
-scene.cycles.use_denoising=True
+scene.cycles.use_denoising=False
+bpy.context.view_layer.cycles.use_denoising=False
 scene.render.resolution_x=1100;scene.render.resolution_y=1250;scene.render.resolution_percentage=85
 scene.render.image_settings.file_format='PNG';scene.render.film_transparent=False
 scene.view_settings.view_transform='AgX'
