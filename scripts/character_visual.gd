@@ -61,8 +61,8 @@ func setup(character_role: String) -> bool:
 	return true
 
 func _build_arm(torso: Node3D, side: float) -> void:
-	var arm := _joint(torso,"Arm"+("L" if side<0 else "R"),Vector3(side*0.34,0.39,0))
-	_shell(arm,[Vector3(-0.12,0.16,0.14),Vector3(0,0.18,0.16),Vector3(0.11,0.11,0.12),Vector3(0.16,0.015,0.025)],steel,8)
+	var arm := _joint(torso,"Arm"+("L" if side<0 else "R"),Vector3(side*0.31,0.39,0))
+	_shell(arm,[Vector3(-0.12,0.15,0.13),Vector3(0,0.17,0.15),Vector3(0.11,0.10,0.11),Vector3(0.16,0.015,0.025)],steel,6)
 	for i in range(3):
 		_shell(arm,[Vector3(-0.13-i*0.055,0.15-i*0.014,0.14-i*0.01),Vector3(-0.10-i*0.055,0.17-i*0.014,0.15-i*0.01)],steel)
 	if role in ["lord","brute"]:

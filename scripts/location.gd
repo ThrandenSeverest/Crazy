@@ -123,6 +123,13 @@ func _setup_player() -> void:
 	collision.shape = shape
 	player.add_child(collision)
 	player_visual = _spawn_character_visual(player, "lord")
+	# A restrained, cool bounce makes black armour readable against red dusk.
+	var bounce := OmniLight3D.new()
+	bounce.position = Vector3(1.3,1.8,-2.0)
+	bounce.light_color = Color("#a8b6ce")
+	bounce.light_energy = 0.65
+	bounce.omni_range = 4.5
+	player.add_child(bounce)
 	add_child(player)
 
 func _setup_cameras() -> void:
@@ -199,6 +206,7 @@ func _setup_ui() -> void:
 	actions.position = Vector2(1030, 25)
 	actions.size = Vector2(224, 330)
 	actions.add_theme_constant_override("separation", 5)
+	actions.visible = false
 	root.add_child(actions)
 	_add_action("ВОЗВРАТ НА КАРТУ [Esc]", _return_to_map)
 	_add_action("ОТРЯД: СЛЕДОВАТЬ [1]", _order_follow)
@@ -475,6 +483,7 @@ func _move_tactical(delta: float) -> void:
 
 func _set_tactics(enabled: bool) -> void:
 	tactics = enabled
+	actions.visible = enabled
 	if not enabled:
 		building = false
 	camera_rig.set_mode(enabled)
@@ -546,6 +555,8 @@ func _fight_enemies(delta: float) -> void:
 				enemy_visual.set_motion(true)
 		elif enemy_hit_timer <= 0.0:
 			Game.take_damage(5)
+			if player_visual != null:
+				player_visual.hit()
 			enemy_hit_timer = 1.3
 			if enemy_visual != null:
 				enemy_visual.attack()
@@ -613,6 +624,9 @@ func _strike() -> void:
 	_refresh()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_H:
+		actions.visible = not actions.visible
+		return
 	if event is InputEventMouseMotion:
 		camera_rig.mouse_move(event.relative, Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT), Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE), Input.is_key_pressed(KEY_SHIFT))
 		return
@@ -717,7 +731,7 @@ func _return_to_map() -> void:
 
 func _message(text: String) -> void:
 	if info != null:
-		info.text = text
+		info.text = text+"\nWASD — движение   ПКМ — камера   Shift — бег   ЛКМ/F — удар   TAB — тактика   H — команды"
 
 func _refresh() -> void:
 	if hud == null:

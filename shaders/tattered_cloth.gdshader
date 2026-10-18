@@ -13,6 +13,12 @@ void fragment() {
  float dirt = 1.0 - UV.y * 0.48;
  float tear = fract(sin(floor(UV.x * 47.0) * 127.1) * 43758.5);
  if (UV.y > 0.86 + tear * 0.14) { discard; }
- ALBEDO = cloth_color.rgb * (fold + weave) * dirt;
+ vec3 fabric = cloth_color.rgb * (fold + weave) * dirt;
+ float trunk = (1.0-step(0.012,abs(UV.x-0.5)))*step(0.20,UV.y)*(1.0-step(0.57,UV.y));
+ float wings = (1.0-step(0.012,abs(abs(UV.x-0.5)-(0.55-UV.y)*0.60)))*step(0.22,UV.y)*(1.0-step(0.51,UV.y));
+ float crown = (1.0-step(0.012,abs(abs(UV.x-0.5)-(UV.y-0.14)*1.1)))*step(0.14,UV.y)*(1.0-step(0.22,UV.y));
+ float crest = max(max(trunk,wings),crown);
+ float wear = step(0.23,fract(sin(dot(floor(UV*160.0),vec2(127.1,311.7)))*43758.5453));
+ ALBEDO = mix(fabric,vec3(0.24,0.16,0.08)*(fold+weave),crest*wear*0.68);
  ROUGHNESS = 0.98;
 }

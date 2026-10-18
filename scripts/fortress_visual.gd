@@ -39,8 +39,8 @@ func build() -> void:
 		_tower(Vector3(x,0,-56),4.1,31+absf(x)*0.30)
 	_box(Vector3(0,22,-70),Vector3(20,44,19),stone)
 	for x in [-11.0,11.0]:
-		_tower(Vector3(x,0,-68),3.7,48)
-	_tower(Vector3(0,0,-79),4.0,61)
+		_belfry(Vector3(x,0,-68),5.2,48)
+	_belfry(Vector3(0,0,-79),8.0,61)
 	for x in [-8.0,-4.0,0.0,4.0,8.0]:
 		_box(Vector3(x,17,-59.6),Vector3(0.85,34,1.8),pale)
 		for y in [9.0,18.0,29.0,38.0]:
@@ -55,6 +55,28 @@ func build() -> void:
 			_box(Vector3(x,0.38,z),Vector3(1.0,0.76,1.0),pale,true)
 			_torch(Vector3(x,0.9,z))
 	_mountains()
+
+func _belfry(at: Vector3, width: float, height: float) -> void:
+	_box(at+Vector3(0,height*0.5,0),Vector3(width,height,width),stone)
+	for side in [-1.0,1.0]:
+		for depth in [-1.0,1.0]:
+			var corner := at+Vector3(side*width*0.5,0,depth*width*0.5)
+			_box(corner+Vector3(0,height*0.5,0),Vector3(0.65,height+2.5,0.65),pale)
+			var spire := CylinderMesh.new()
+			spire.top_radius = 0
+			spire.bottom_radius = 0.55
+			spire.height = 4.5
+			spire.radial_segments = 4
+			var finial := MeshInstance3D.new()
+			finial.mesh = spire
+			finial.position = corner+Vector3(0,height+3.5,0)
+			finial.material_override = pale
+			add_child(finial)
+	for y in range(8,int(height-3),7):
+		_box(at+Vector3(0,y,0),Vector3(width+0.4,0.35,width+0.4),pale)
+		for x in [-0.27,0.27]:
+			_window(at+Vector3(x*width,float(y)+2.3,width*0.5+0.06),0.65,3.6)
+	_box(at+Vector3(0,height,0),Vector3(width+0.8,0.7,width+0.8),pale)
 
 func _terrace() -> void:
 	_box(Vector3(0,3.5,21),Vector3(17,1,14),stone,true)
@@ -164,7 +186,7 @@ func _banner(at: Vector3, size: Vector2) -> void:
 	mesh.subdivide_depth = 16
 	var mat := ShaderMaterial.new()
 	mat.shader = CLOTH
-	mat.set_shader_parameter("cloth_color",Color("#741b2b"))
+	mat.set_shader_parameter("cloth_color",Color("#441923"))
 	mat.set_shader_parameter("wind_strength",0.16)
 	var flag := MeshInstance3D.new()
 	flag.mesh = mesh
@@ -195,7 +217,7 @@ func _torch(at: Vector3) -> void:
 func _mountains() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1709
-	for i in range(22):
+	for i in range(36):
 		var mesh := CylinderMesh.new()
 		mesh.top_radius = 0
 		mesh.bottom_radius = rng.randf_range(35,65)
@@ -204,6 +226,8 @@ func _mountains() -> void:
 		var mountain := MeshInstance3D.new()
 		mountain.mesh = mesh
 		mountain.material_override = _stone(Color("#33313e"))
-		mountain.position = Vector3(-240+i*24,-4,-170-rng.randf_range(0,60))
+		var a := i*TAU/36.0
+		var radius := rng.randf_range(190,260)
+		mountain.position = Vector3(sin(a)*radius,-4,cos(a)*radius)
 		mountain.rotation.y = rng.randf()*TAU
 		add_child(mountain)
