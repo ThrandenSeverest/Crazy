@@ -1,6 +1,7 @@
 extends Node3D
 
 const CameraRig = preload("res://scripts/camera_rig.gd")
+const HeroCharacter = preload("res://scripts/hero_character.gd")
 ## Playable primitive 3D location: player mode, tactical mode, combat, walls.
 
 const DARK_STONE := Color("#636b69")
@@ -11,6 +12,7 @@ const ENEMY_COLOR := Color("#923e36")
 const ALLY_COLOR := Color("#3d617c")
 
 var player: CharacterBody3D
+var hero_visual: Node3D
 var third_camera: Camera3D
 var tactical_camera: Camera3D
 var tactics := false
@@ -87,8 +89,14 @@ func _setup_player() -> void:
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	player.add_child(collision)
-	_character_mesh(player, Color("#303840"), Color("#d1bb9e"))
 	add_child(player)
+	var hero := HeroCharacter.new()
+	hero.name = "HeroModel"
+	hero.position.y = -0.94
+	player.add_child(hero)
+	hero_visual = hero
+	if not hero.is_ready_for_game:
+		_character_mesh(player, Color("#303840"), Color("#d1bb9e"))
 
 func _setup_cameras() -> void:
 	third_camera = Camera3D.new()
@@ -282,6 +290,8 @@ func _physics_process(delta: float) -> void:
 		if not player.is_on_floor():
 			player.velocity.y -= 20.0 * delta
 		player.move_and_slide()
+	if hero_visual != null:
+		hero_visual.call("animate_character", delta, clampf(Vector2(player.velocity.x, player.velocity.z).length() / 7.0, 0.0, 1.0))
 	camera_rig.update(delta)
 	_move_allies(delta)
 	if encounter_active and not encounter_done:

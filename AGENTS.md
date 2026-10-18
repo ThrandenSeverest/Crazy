@@ -32,3 +32,8 @@ Project: Crazy — a medieval third-person RPG combined with a world-map strateg
 - Current procedural primitive meshes are temporary gameplay placeholders; NEVER claim they meet the target visual style. Do not substitute more cubes, cylinders, spheres or a pixel filter for anatomically convincing modular armor and authored Gothic architecture.
 - Future visual spike: approved reference -> editable Blender / licensed mesh resources -> Godot imports -> actual animated gameplay captures and multi-angle visual comparison. This is a planned pipeline, not an implemented feature.
 - For first MVP, preserve the existing no-external-asset dependency rule and functional gameplay; test new licensed art assets in an isolated visual slice before broad integration.
+
+## Current hero geometry prototype
+- Before Godot import locally: `python3 tools/build_hero.py` followed by `python3 tools/validate_hero.py`. CI does this automatically. GLBs are generated, not tracked.
+- Model components and armor slots: `scripts/hero_character.gd`; manual viewer: `scenes/hero_showcase.tscn`; limitations: `docs/HERO_MODEL.md`.
+- Low-detail procedural geometry and rigid limb movement are NOT approved final art, real skinned rigging or quality animations. Validate against the three user references before claiming fidelity.

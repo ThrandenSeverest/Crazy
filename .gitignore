@@ -14,3 +14,7 @@ Thumbs.db
 build/
 dist/
 *.log
+
+# Generated from tools/build_hero.py
+/assets/hero/*.glb
+/assets/hero/manifest.json

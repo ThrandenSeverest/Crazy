@@ -29,6 +29,11 @@ jobs:
           echo "Export templates:"
           find "$HOME/.local/share/godot/export_templates" -maxdepth 2 -name 'windows_release_x86_64.exe' -print
 
+      - name: Generate modular hero GLBs
+        run: |
+          python3 tools/build_hero.py
+          python3 tools/validate_hero.py
+
       - name: Import and validate project
         run: godot --headless --path . --import --quit
 
