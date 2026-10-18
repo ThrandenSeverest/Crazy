@@ -1,6 +1,7 @@
 extends Node3D
 
 const CameraRig = preload("res://scripts/camera_rig.gd")
+const CharacterVisualScript = preload("res://scripts/character_visual.gd")
 ## Playable primitive 3D location: player mode, tactical mode, combat, walls.
 
 const DARK_STONE := Color("#242126")
@@ -13,6 +14,7 @@ const EMBER := Color("#ff6a24")
 const BLOOD_RED := Color("#61131a")
 
 var player: CharacterBody3D
+var player_visual: CharacterVisual
 var third_camera: Camera3D
 var tactical_camera: Camera3D
 var tactics := false
@@ -112,7 +114,7 @@ func _setup_player() -> void:
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	player.add_child(collision)
-	_character_mesh(player, Color("#303840"), Color("#d1bb9e"))
+	player_visual = _spawn_character_visual(player, "lord")
 	add_child(player)
 
 func _setup_cameras() -> void:
@@ -237,6 +239,7 @@ func _visual_box(parent: Node3D, pos: Vector3, dims: Vector3, tint: Color) -> vo
 	parent.add_child(instance)
 
 func _character_mesh(parent: Node3D, tunic: Color, face: Color) -> void:
+	# Emergency fallback used only if an imported rig cannot be loaded.
 	var torso := CapsuleMesh.new()
 	torso.radius = 0.43
 	torso.height = 1.42
@@ -267,6 +270,16 @@ func _character_mesh(parent: Node3D, tunic: Color, face: Color) -> void:
 	helm_mesh.material_override = _metal_material()
 	parent.add_child(helm_mesh)
 	_banner(parent, Vector3(0, 0.45, 0.31), Vector2(0.55, 1.15), tunic, PI)
+
+func _spawn_character_visual(parent: Node3D, role: String) -> CharacterVisual:
+	var visual := CharacterVisualScript.new() as CharacterVisual
+	visual.name = "CharacterVisual"
+	parent.add_child(visual)
+	if not visual.setup(role):
+		visual.queue_free()
+		_character_mesh(parent, ENEMY_COLOR if role == "enemy" else ALLY_COLOR, Color("#d1b28c"))
+		return null
+	return visual
 
 func _create_castle() -> void:
 	_solid_box(Vector3(-15, 5, -18), Vector3(12, 10, 12), DARK_STONE)
@@ -375,7 +388,8 @@ func _spawn_allies() -> void:
 		var figure := Node3D.new()
 		figure.name = "Soldier_%d" % n
 		figure.position = Vector3((n % 4 - 1.5) * 1.5, 0.98, 21 + (n / 4) * 1.8)
-		_character_mesh(figure, ALLY_COLOR, Color("#d1b28c"))
+		var visual := _spawn_character_visual(figure, "ally")
+		figure.set_meta("character_visual", visual)
 		add_child(figure)
 		allies.append(figure)
 
@@ -384,9 +398,9 @@ func _spawn_enemies(count: int, center: Vector3) -> void:
 		var unit := Node3D.new()
 		unit.name = "Enemy_%d" % n
 		unit.position = center + Vector3((n % 4 - 1.5) * 3.0, 0.98, -float(n / 4) * 3.0)
-		_character_mesh(unit, ENEMY_COLOR, Color("#d9bc9c"))
+		var visual := _spawn_character_visual(unit, "brute" if n % 4 == 3 else "enemy")
 		add_child(unit)
-		enemies.append({"unit": unit, "hp": 4})
+		enemies.append({"unit": unit, "visual": visual, "hp": 4})
 
 func _physics_process(delta: float) -> void:
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
@@ -417,6 +431,8 @@ func _move_player(delta: float) -> void:
 	else:
 		player.velocity.y -= 20.0 * delta
 	player.move_and_slide()
+	if player_visual != null:
+		player_visual.set_motion(direction.length() > 0.1, Input.is_key_pressed(KEY_SHIFT))
 	if direction.length() > 0.1:
 		player.rotation.y = lerp_angle(player.rotation.y, atan2(-direction.x, -direction.z), clampf(delta * 14.0, 0, 1))
 
@@ -474,23 +490,36 @@ func _move_allies(delta: float) -> void:
 		var pos := anchor + camera_rig.right() * (col * 1.6) - camera_rig.forward() * (3.0 + row * 1.7)
 		pos.y = 0.98
 		var displacement := pos - soldier.global_position
+		var visual := soldier.get_meta("character_visual") as CharacterVisual
 		if displacement.length() > 0.2:
 			var step := displacement.normalized() * minf(displacement.length(), delta * 6.0)
 			soldier.global_position += step
 			soldier.rotation.y = lerp_angle(soldier.rotation.y, atan2(-step.x, -step.z), minf(1.0, delta * 12.0))
+			if visual != null:
+				visual.set_motion(true)
+		elif visual != null:
+			visual.set_motion(false)
 
 func _fight_enemies(delta: float) -> void:
 	enemy_hit_timer = maxf(0, enemy_hit_timer - delta)
 	ally_hit_timer = maxf(0, ally_hit_timer - delta)
 	for enemy in enemies:
 		var unit: Node3D = enemy["unit"]
+		var enemy_visual: CharacterVisual = enemy.get("visual") as CharacterVisual
 		var difference := player.global_position - unit.global_position
 		difference.y = 0
 		if difference.length() > 2.0:
 			unit.position += difference.normalized() * delta * 1.7
+			unit.rotation.y = lerp_angle(unit.rotation.y, atan2(-difference.x, -difference.z), minf(1.0, delta * 8.0))
+			if enemy_visual != null:
+				enemy_visual.set_motion(true)
 		elif enemy_hit_timer <= 0.0:
 			Game.take_damage(5)
 			enemy_hit_timer = 1.3
+			if enemy_visual != null:
+				enemy_visual.attack()
+		elif enemy_visual != null:
+			enemy_visual.set_motion(false)
 	if Game.player_health <= 0:
 		encounter_done = true
 		Game.fail_encounter()
@@ -526,6 +555,8 @@ func _strike() -> void:
 	if tactics or not encounter_active or encounter_done or attack_cooldown > 0.0:
 		return
 	attack_cooldown = 0.45
+	if player_visual != null:
+		player_visual.attack(true)
 	var nearest: Dictionary = {}
 	var best := 3.7
 	for enemy in enemies:
@@ -538,6 +569,9 @@ func _strike() -> void:
 		_message("Противник слишком далеко. Подойди ближе.")
 		return
 	nearest["hp"] = int(nearest["hp"]) - 2
+	var struck_visual: CharacterVisual = nearest.get("visual") as CharacterVisual
+	if struck_visual != null:
+		struck_visual.hit()
 	_remove_dead_enemies()
 	_refresh()
 

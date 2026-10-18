@@ -39,7 +39,12 @@
 Каждый push в `main` автоматически запускает проверку Godot, экспортирует самостоятельный Windows x86_64 EXE с встроенным PCK, сохраняет EXE как артефакт GitHub Actions и публикует отдельный предварительный релиз.
 
 Для разработчиков: можно открыть `project.godot` в Godot 4.4.1 и запустить F5.
+Перед первым локальным запуском на Linux/macOS выполните `bash scripts/fetch_character_assets.sh`; на Windows модели уже входят в собранный EXE из Releases/Actions.
 
 ## Разработка
 
 См. `AGENTS.md` и `docs/DESIGN.md`. Не заявлять о прохождении тестов без реального запуска Godot. Все изменения необходимо проверять запуском проекта в Godot и ручным прохождением цикла игры.
+
+## Third-party art
+
+Rigged adventurer character models and animations are from KayKit Character Pack: Adventurers by Kay Lousberg, released under CC0. The license is included at `assets/characters/kaykit/LICENSE.txt`.

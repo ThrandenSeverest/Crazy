@@ -18,6 +18,10 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
+      - name: Fetch CC0 rigged character models
+        shell: bash
+        run: bash scripts/fetch_character_assets.sh
+
       - name: Make Godot Windows export templates available
         shell: bash
         run: |

@@ -12,5 +12,6 @@ Thumbs.db
 
 # Local exports and logs
 build/
+assets/characters/kaykit/*.glb
 dist/
 *.log
