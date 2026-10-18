@@ -226,7 +226,7 @@ func _mountains() -> void:
 		for x in range(-50,50):
 			if Vector2(x,z).length()<16.0:
 				continue
-			for corner in [Vector2(0,0),Vector2(0,1),Vector2(1,0),Vector2(1,0),Vector2(0,1),Vector2(1,1)]:
+			for corner in [Vector2(0,0),Vector2(1,0),Vector2(0,1),Vector2(1,0),Vector2(1,1),Vector2(0,1)]:
 				var px: float = (x+corner.x)*8.0
 				var pz: float = (z+corner.y)*8.0
 				var distance_from_center := Vector2(px,pz).length()
