@@ -26,3 +26,9 @@ Project: Crazy — a medieval third-person RPG combined with a world-map strateg
 - Add real melee hitboxes/animations and troop command UI.
 - Implement build placement with proper navigation and pathfinding.
 - Improve art and UX without losing functional gameplay.
+
+## AI art and visual acceptance rules (2026-10-18)
+- Before changing graphics, modeling, rigging, animation or visual QA, READ `docs/AI_ART_PIPELINE.md` in full. It records the approved visual goal, researched AI-game workflows, license warnings and acceptance gates.
+- Current procedural primitive meshes are temporary gameplay placeholders; NEVER claim they meet the target visual style. Do not substitute more cubes, cylinders, spheres or a pixel filter for anatomically convincing modular armor and authored Gothic architecture.
+- Future visual spike: approved reference -> editable Blender / licensed mesh resources -> Godot imports -> actual animated gameplay captures and multi-angle visual comparison. This is a planned pipeline, not an implemented feature.
+- For first MVP, preserve the existing no-external-asset dependency rule and functional gameplay; test new licensed art assets in an isolated visual slice before broad integration.
