@@ -35,6 +35,12 @@ jobs:
       - name: Smoke test main scene
         run: godot --headless --path . --quit-after 30
 
+      - name: Smoke test castle and articulated characters
+        run: godot --headless --path . res://scenes/location.tscn --quit-after 90
+
+      - name: Verify actual animation joint movement
+        run: godot --headless --path . --script res://tests/character_smoke.gd
+
       - name: Export standalone Windows EXE
         shell: bash
         run: |
@@ -51,6 +57,29 @@ jobs:
           path: build/Crazy.exe
           if-no-files-found: error
           retention-days: 30
+
+  visual-review:
+    name: Render actual gameplay for visual review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install virtual display and software renderer
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+      - name: Download pinned Godot
+        run: |
+          curl -L --fail -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          unzip /tmp/godot.zip -d /tmp/godot
+      - name: Import then capture game scene
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path . --import --quit
+          xvfb-run -a /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --path . --rendering-method gl_compatibility res://scenes/visual_review.tscn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Crazy-Visual-Review
+          path: build/review/*.png
+          if-no-files-found: error
 
   publish-release:
     name: Publish Windows EXE release
