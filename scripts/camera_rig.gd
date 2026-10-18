@@ -6,8 +6,8 @@ var third: Camera3D
 var tactical: Camera3D
 var is_tactical := false
 var yaw := 0.0
-var pitch := 0.36
-var distance := 7.0
+var pitch := 0.10
+var distance := 4.4
 var map_yaw := 0.0
 var map_zoom := 28.0
 var focus := Vector3.ZERO
@@ -67,7 +67,7 @@ func limit_focus() -> void:
 	focus.z = clampf(focus.z, -38.0, 38.0)
 
 func update(delta: float) -> void:
-	var target := actor.global_position + Vector3(0, 1.3, 0)
+	var target := actor.global_position + Vector3(0, 0.55, 0)
 	var offset := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)) * distance
 	var desired := target + offset
 	var ray := PhysicsRayQueryParameters3D.create(target, desired)

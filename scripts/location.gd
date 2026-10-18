@@ -2,6 +2,9 @@ extends Node3D
 
 const CameraRig = preload("res://scripts/camera_rig.gd")
 const CharacterVisualScript = preload("res://scripts/character_visual.gd")
+const FortressVisualScript = preload("res://scripts/fortress_visual.gd")
+const MasonryShader = preload("res://shaders/masonry.gdshader")
+const EclipseShader = preload("res://shaders/eclipse_sky.gdshader")
 ## Playable primitive 3D location: player mode, tactical mode, combat, walls.
 
 const DARK_STONE := Color("#242126")
@@ -37,6 +40,7 @@ var hud: Label
 var info: Label
 var actions: VBoxContainer
 var title_plate: Panel
+var health_bar: ProgressBar
 
 func _ready() -> void:
 	_setup_world()
@@ -66,13 +70,17 @@ func _ready() -> void:
 
 func _setup_world() -> void:
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("#17131b")
+	env.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var sky_material := ShaderMaterial.new()
+	sky_material.shader = EclipseShader
+	sky.sky_material = sky_material
+	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#5c4c58")
-	env.ambient_light_energy = 0.38
+	env.ambient_light_color = Color("#a4a9bd")
+	env.ambient_light_energy = 0.68
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.9
+	env.tonemap_exposure = 1.1
 	env.glow_enabled = true
 	env.glow_intensity = 0.8
 	env.glow_strength = 0.72
@@ -81,9 +89,9 @@ func _setup_world() -> void:
 	env.ssao_radius = 1.8
 	env.ssao_intensity = 2.2
 	env.fog_enabled = true
-	env.fog_light_color = Color("#332b38")
+	env.fog_light_color = Color("#504552")
 	env.fog_light_energy = 0.65
-	env.fog_density = 0.008
+	env.fog_density = 0.0028
 	env.fog_sky_affect = 0.65
 	var world := WorldEnvironment.new()
 	world.environment = env
@@ -91,17 +99,17 @@ func _setup_world() -> void:
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42, -28, 0)
-	sun.light_color = Color("#d77b66")
-	sun.light_energy = 1.05
+	sun.light_color = Color("#f3b49d")
+	sun.light_energy = 1.65
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 110.0
+	sun.directional_shadow_max_distance = 160.0
 	add_child(sun)
-	_solid_box(Vector3(0, -0.7, 0), Vector3(90, 1.4, 90), GRASS)
+	_solid_box(Vector3(0, -0.7, -20), Vector3(140, 1.4, 180), Color("#55515a"))
 	# A broad, low red sky light keeps silhouettes legible without making the world cheerful.
 	var dusk := DirectionalLight3D.new()
 	dusk.rotation_degrees = Vector3(-26, 152, 0)
-	dusk.light_color = Color("#6a2930")
-	dusk.light_energy = 0.35
+	dusk.light_color = Color("#8593b7")
+	dusk.light_energy = 0.48
 	add_child(dusk)
 
 func _setup_player() -> void:
@@ -120,7 +128,7 @@ func _setup_player() -> void:
 func _setup_cameras() -> void:
 	third_camera = Camera3D.new()
 	third_camera.name = "ThirdPersonCamera"
-	third_camera.fov = 70
+	third_camera.fov = 58
 	add_child(third_camera)
 	third_camera.make_current()
 	tactical_camera = Camera3D.new()
@@ -136,11 +144,38 @@ func _setup_ui() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(root)
+	var theme := Theme.new()
+	var serif := SystemFont.new()
+	serif.font_names = PackedStringArray(["Georgia","Liberation Serif","Times New Roman"])
+	theme.default_font = serif
+	root.theme = theme
+	var plate := Panel.new()
+	plate.position = Vector2(18,18)
+	plate.size = Vector2(430,119)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var frame := StyleBoxFlat.new()
+	frame.bg_color = Color(0.025,0.025,0.035,0.87)
+	frame.border_color = Color("#74624a")
+	frame.set_border_width_all(1)
+	frame.set_content_margin_all(10)
+	plate.add_theme_stylebox_override("panel",frame)
+	root.add_child(plate)
+	health_bar = ProgressBar.new()
+	health_bar.position = Vector2(34,64)
+	health_bar.size = Vector2(390,15)
+	health_bar.show_percentage = false
+	health_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var health_fill := StyleBoxFlat.new()
+	health_fill.bg_color = Color("#84302e")
+	health_fill.border_color = Color("#ba8861")
+	health_fill.set_border_width_all(1)
+	health_bar.add_theme_stylebox_override("fill",health_fill)
+	root.add_child(health_bar)
 
 	hud = Label.new()
-	hud.position = Vector2(20, 18)
-	hud.size = Vector2(760, 110)
-	hud.add_theme_font_size_override("font_size", 19)
+	hud.position = Vector2(34, 28)
+	hud.size = Vector2(400, 104)
+	hud.add_theme_font_size_override("font_size", 17)
 	hud.add_theme_color_override("font_color", Color("#f4ebd6"))
 	hud.add_theme_color_override("font_shadow_color", Color("#080607"))
 	hud.add_theme_constant_override("shadow_offset_x", 2)
@@ -149,10 +184,10 @@ func _setup_ui() -> void:
 	root.add_child(hud)
 
 	info = Label.new()
-	info.position = Vector2(20, 585)
-	info.size = Vector2(980, 113)
+	info.position = Vector2(28, 656)
+	info.size = Vector2(1030, 56)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.add_theme_font_size_override("font_size", 19)
+	info.add_theme_font_size_override("font_size", 15)
 	info.add_theme_color_override("font_color", Color("#fff2d1"))
 	info.add_theme_color_override("font_shadow_color", Color("#080607"))
 	info.add_theme_constant_override("shadow_offset_x", 2)
@@ -161,9 +196,9 @@ func _setup_ui() -> void:
 	root.add_child(info)
 
 	actions = VBoxContainer.new()
-	actions.position = Vector2(986, 25)
-	actions.size = Vector2(272, 430)
-	actions.add_theme_constant_override("separation", 10)
+	actions.position = Vector2(1030, 25)
+	actions.size = Vector2(224, 330)
+	actions.add_theme_constant_override("separation", 5)
 	root.add_child(actions)
 	_add_action("ВОЗВРАТ НА КАРТУ [Esc]", _return_to_map)
 	_add_action("ОТРЯД: СЛЕДОВАТЬ [1]", _order_follow)
@@ -179,8 +214,18 @@ func _setup_ui() -> void:
 func _add_action(txt: String, callback: Callable) -> void:
 	var button := Button.new()
 	button.text = txt
-	button.custom_minimum_size = Vector2(267, 46)
-	button.add_theme_font_size_override("font_size", 16)
+	button.custom_minimum_size = Vector2(224, 34)
+	button.add_theme_font_size_override("font_size", 14)
+	var border := StyleBoxFlat.new()
+	border.bg_color = Color(0.025,0.025,0.035,0.88)
+	border.border_color = Color("#6d5d48")
+	border.set_border_width_all(1)
+	button.add_theme_stylebox_override("normal",border)
+	var hover := border.duplicate() as StyleBoxFlat
+	hover.border_color = Color("#cbab73")
+	hover.bg_color = Color("#30242a")
+	button.add_theme_stylebox_override("hover",hover)
+	button.add_theme_stylebox_override("pressed",hover)
 	button.add_theme_color_override("font_color", Color("#eadcc5"))
 	button.add_theme_color_override("font_hover_color", Color("#ffffff"))
 	button.add_theme_color_override("font_pressed_color", Color("#ffbb75"))
@@ -199,7 +244,11 @@ func _solid_box(at: Vector3, dims: Vector3, tint: Color, yaw: float = 0.0) -> No
 	block_mesh.size = dims
 	var visible := MeshInstance3D.new()
 	visible.mesh = block_mesh
-	visible.material_override = _material(tint)
+	var stone_material := ShaderMaterial.new()
+	stone_material.shader = MasonryShader
+	stone_material.set_shader_parameter("base_color",tint)
+	stone_material.set_shader_parameter("paving",dims.y<2.0 and dims.x>20.0)
+	visible.material_override = _material(tint) if tint==WOOD else stone_material
 	body.add_child(visible)
 	var shape := BoxShape3D.new()
 	shape.size = dims
@@ -282,27 +331,9 @@ func _spawn_character_visual(parent: Node3D, role: String) -> CharacterVisual:
 	return visual
 
 func _create_castle() -> void:
-	_solid_box(Vector3(-15, 5, -18), Vector3(12, 10, 12), DARK_STONE)
-	_solid_box(Vector3(-15, 11, -18), Vector3(13, 2, 13), PALE_STONE)
-	for xx in [-29.0, 29.0]:
-		for zz in [-29.0, 29.0]:
-			_tower(Vector3(xx, 0, zz), 5.3, 11.0)
-	for xx in [-19.0, 19.0]:
-		_solid_box(Vector3(xx, 2.0, -29), Vector3(16, 4, 1.3), PALE_STONE)
-	_solid_box(Vector3(0, 2.0, -29), Vector3(8, 4, 1.2), WOOD)
-	_solid_box(Vector3(24, 2, 0), Vector3(1.6, 4, 35), PALE_STONE)
-	_solid_box(Vector3(-29, 2, 0), Vector3(1.6, 4, 35), PALE_STONE)
-	_solid_box(Vector3(0, 0.3, 8), Vector3(8, 0.6, 5), Color("#867c6c"))
-	_solid_box(Vector3(12, 2.2, -13), Vector3(8, 4.4, 8), WOOD)
-	for x in [-22.0, -11.0, 11.0, 22.0]:
-		_brazier(Vector3(x, 4.2, -28.0))
-		_banner(self, Vector3(x, 7.6, -28.65), Vector2(1.5, 4.4), BLOOD_RED)
-	for x in [-17.0, 17.0]:
-		_brazier(Vector3(x, 4.2, 25.0))
-	_banner(self, Vector3(0, 10.0, -24.0), Vector2(3.0, 7.2), BLOOD_RED)
-	for n in range(9):
-		var x := -24.0 + n * 6.0
-		_solid_box(Vector3(x, 4.6, -29.0), Vector3(1.8, 1.5, 1.4), PALE_STONE)
+	var fortress := FortressVisualScript.new()
+	add_child(fortress)
+	fortress.build()
 
 func _create_village() -> void:
 	for pos in [Vector3(-18, 2.5, -12), Vector3(15, 2.5, -18), Vector3(-23, 2.5, 9), Vector3(21, 2.5, 6)]:
@@ -533,6 +564,9 @@ func _fight_enemies(delta: float) -> void:
 				var unit: Node3D = enemy["unit"]
 				if ally.global_position.distance_to(unit.global_position) < 2.8:
 					enemy["hp"] = int(enemy["hp"]) - 1
+					var ally_visual := ally.get_meta("character_visual") as CharacterVisual
+					if ally_visual != null:
+						ally_visual.attack()
 					break
 	_remove_dead_enemies()
 
@@ -540,7 +574,10 @@ func _remove_dead_enemies() -> void:
 	for n in range(enemies.size() - 1, -1, -1):
 		if int(enemies[n]["hp"]) <= 0:
 			var unit: Node3D = enemies[n]["unit"]
-			unit.queue_free()
+			var corpse_visual: CharacterVisual = enemies[n].get("visual") as CharacterVisual
+			if corpse_visual != null:
+				corpse_visual.die()
+			get_tree().create_timer(6.0).timeout.connect(unit.queue_free)
 			enemies.remove_at(n)
 	if enemies.is_empty() and encounter_active and not encounter_done:
 		encounter_done = true
@@ -687,7 +724,5 @@ func _refresh() -> void:
 		return
 	var mode := "ТАКТИКА" if tactics else "ГЕРОЙ"
 	var where := "ЗАМОК" if Game.destination == "castle" else ("ДЕРЕВНЯ" if Game.destination == "village" else "ЛАГЕРЬ")
-	hud.text = ("%s  |  %s  |  Здоровье %d/100\n"
-		+ "Золото %d  Дерево %d  Камень %d  Еда %d  Солдаты %d\n"
-		+ ("TAB: герой  WASD: карта  Q/E: поворот  MMB: обзор  ПКМ: приказ  1/2: режим отряда" if tactics else "TAB: тактика  WASD: движение  ПКМ+мышь: камера  колесо: масштаб  Shift: бег  Space: прыжок  ЛКМ/F: удар")
-	) % [where, mode, Game.player_health, Game.gold, Game.wood, Game.stone, Game.food, Game.soldiers]
+	health_bar.value = Game.player_health
+	hud.text = ("%s  /  %s\n\nЗолото %d   Дерево %d   Камень %d\nПровизия %d   Гарнизон %d") % [where,mode,Game.gold,Game.wood,Game.stone,Game.food,Game.soldiers]
