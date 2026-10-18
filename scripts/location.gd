@@ -1,4 +1,6 @@
 extends Node3D
+
+const CameraRig = preload("res://scripts/camera_rig.gd")
 ## Playable primitive 3D location: player mode, tactical mode, combat, walls.
 
 const DARK_STONE := Color("#636b69")
@@ -14,8 +16,10 @@ var tactical_camera: Camera3D
 var tactics := false
 var building := false
 var building_yaw := 0.0
-var zoom := 26.0
-var focus_point := Vector3.ZERO
+var camera_rig = CameraRig.new()
+var squad_order := "follow"
+var squad_target := Vector3.ZERO
+var attack_cooldown := 0.0
 var encounter_done := false
 var encounter_active := false
 var defending := false
@@ -96,7 +100,7 @@ func _setup_cameras() -> void:
 	tactical_camera.name = "StrategyCamera"
 	tactical_camera.fov = 60
 	add_child(tactical_camera)
-	_update_cameras(1.0)
+	camera_rig.setup(player, third_camera, tactical_camera)
 
 func _setup_ui() -> void:
 	var overlay := CanvasLayer.new()
@@ -129,9 +133,11 @@ func _setup_ui() -> void:
 	actions.add_theme_constant_override("separation", 10)
 	root.add_child(actions)
 	_add_action("ВОЗВРАТ НА КАРТУ [Esc]", _return_to_map)
+	_add_action("ОТРЯД: СЛЕДОВАТЬ [1]", _order_follow)
+	_add_action("ОТРЯД: СТОЯТЬ [2]", _order_hold)
 	_add_action("СОХРАНИТЬ", _save)
 	if Game.destination == "castle":
-		_add_action("СТРОИТЬ СТЕНУ [Tab]", _toggle_build)
+		_add_action("СТРОИТЬ СТЕНУ [ЛКМ]", _toggle_build)
 		_add_action("НАНЯТЬ 2 СОЛДАТ", _recruit)
 		_add_action("ОТРАЗИТЬ НАПАДЕНИЕ", _begin_defense)
 	elif Game.destination == "camp":
@@ -266,65 +272,95 @@ func _spawn_enemies(count: int, center: Vector3) -> void:
 		enemies.append({"unit": unit, "hp": 4})
 
 func _physics_process(delta: float) -> void:
-	if not tactics and not encounter_done:
+	attack_cooldown = maxf(0.0, attack_cooldown - delta)
+	if not tactics:
 		_move_player(delta)
-	elif tactics:
+	else:
 		_move_tactical(delta)
-	_update_cameras(delta)
+		player.velocity.x = 0.0
+		player.velocity.z = 0.0
+		if not player.is_on_floor():
+			player.velocity.y -= 20.0 * delta
+		player.move_and_slide()
+	camera_rig.update(delta)
 	_move_allies(delta)
 	if encounter_active and not encounter_done:
 		_fight_enemies(delta)
 
 func _move_player(delta: float) -> void:
-	var move := Vector3.ZERO
-	if Input.is_key_pressed(KEY_W):
-		move.z -= 1.0
-	if Input.is_key_pressed(KEY_S):
-		move.z += 1.0
-	if Input.is_key_pressed(KEY_A):
-		move.x -= 1.0
-	if Input.is_key_pressed(KEY_D):
-		move.x += 1.0
-	move = move.normalized()
-	player.velocity.x = move.x * 7.0
-	player.velocity.z = move.z * 7.0
+	var h := float(int(Input.is_key_pressed(KEY_D)) - int(Input.is_key_pressed(KEY_A)))
+	var v := float(int(Input.is_key_pressed(KEY_W)) - int(Input.is_key_pressed(KEY_S)))
+	var direction: Vector3 = camera_rig.world_movement(h, v)
+	var speed := 10.0 if Input.is_key_pressed(KEY_SHIFT) else 6.5
+	player.velocity.x = direction.x * speed
+	player.velocity.z = direction.z * speed
 	if player.is_on_floor():
-		player.velocity.y = 0.0
+		if player.velocity.y < 0.0:
+			player.velocity.y = 0.0
 	else:
 		player.velocity.y -= 20.0 * delta
 	player.move_and_slide()
-	if move.length() > 0.1:
-		player.rotation.y = atan2(-move.x, -move.z)
+	if direction.length() > 0.1:
+		player.rotation.y = lerp_angle(player.rotation.y, atan2(-direction.x, -direction.z), clampf(delta * 14.0, 0, 1))
 
 func _move_tactical(delta: float) -> void:
-	var dir := Vector3.ZERO
-	if Input.is_key_pressed(KEY_W):
-		dir.z -= 1.0
-	if Input.is_key_pressed(KEY_S):
-		dir.z += 1.0
-	if Input.is_key_pressed(KEY_A):
-		dir.x -= 1.0
-	if Input.is_key_pressed(KEY_D):
-		dir.x += 1.0
-	focus_point += dir.normalized() * 22.0 * delta
-	focus_point.x = clampf(focus_point.x, -36, 36)
-	focus_point.z = clampf(focus_point.z, -36, 36)
+	var h := float(int(Input.is_key_pressed(KEY_D)) - int(Input.is_key_pressed(KEY_A)))
+	var v := float(int(Input.is_key_pressed(KEY_W)) - int(Input.is_key_pressed(KEY_S)))
+	var rot := float(int(Input.is_key_pressed(KEY_E)) - int(Input.is_key_pressed(KEY_Q)))
+	camera_rig.pan(h, v, rot, delta)
 
-func _update_cameras(delta: float) -> void:
-	var target := player.global_position + Vector3(0, 4.8, 9.0)
-	third_camera.global_position = third_camera.global_position.lerp(target, minf(delta * 7.0, 1.0))
-	third_camera.look_at(player.global_position + Vector3(0, 1.0, 0), Vector3.UP)
-	tactical_camera.global_position = focus_point + Vector3(0, zoom, zoom * 0.95)
-	tactical_camera.look_at(focus_point, Vector3.UP)
+func _set_tactics(enabled: bool) -> void:
+	tactics = enabled
+	if not enabled:
+		building = false
+	camera_rig.set_mode(enabled)
+	_refresh()
+
+func _order_follow() -> void:
+	squad_order = "follow"
+	_message("Солдаты следуют за героем.")
+
+func _order_hold() -> void:
+	squad_order = "hold"
+	squad_target = player.global_position
+	_message("Солдаты удерживают текущую позицию.")
+
+func _order_at(screen: Vector2) -> void:
+	var point := _ground_at(screen)
+	if point == Vector3.INF:
+		_message("Точка за пределами игровой локации.")
+		return
+	squad_order = "move"
+	squad_target = Vector3(point.x, 0.98, point.z)
+	_message("Отряд направлен в указанную точку. 1 — следовать, 2 — стоять.")
+
+func _ground_at(screen: Vector2) -> Vector3:
+	var origin := tactical_camera.project_ray_origin(screen)
+	var ray_dir := tactical_camera.project_ray_normal(screen)
+	if ray_dir.y >= -0.001:
+		return Vector3.INF
+	var ray_length := -origin.y / ray_dir.y
+	if ray_length < 0.0 or ray_length > 500.0:
+		return Vector3.INF
+	var pos := origin + ray_dir * ray_length
+	if absf(pos.x) > 43.0 or absf(pos.z) > 43.0:
+		return Vector3.INF
+	return pos
 
 func _move_allies(delta: float) -> void:
+	var anchor := player.global_position if squad_order == "follow" else squad_target
+	anchor.y = 0.98
 	for n in range(allies.size()):
-		var unit := allies[n]
+		var soldier := allies[n]
 		var col := float(n % 4) - 1.5
 		var row := float(int(n / 4))
-		var pos := player.global_position + Vector3(col * 1.5, 0, 3.5 + row * 1.7)
+		var pos := anchor + camera_rig.right() * (col * 1.6) - camera_rig.forward() * (3.0 + row * 1.7)
 		pos.y = 0.98
-		unit.global_position = unit.global_position.lerp(pos, minf(delta * 3.0, 1.0))
+		var displacement := pos - soldier.global_position
+		if displacement.length() > 0.2:
+			var step := displacement.normalized() * minf(displacement.length(), delta * 6.0)
+			soldier.global_position += step
+			soldier.rotation.y = lerp_angle(soldier.rotation.y, atan2(-step.x, -step.z), minf(1.0, delta * 12.0))
 
 func _fight_enemies(delta: float) -> void:
 	enemy_hit_timer = maxf(0, enemy_hit_timer - delta)
@@ -370,8 +406,9 @@ func _remove_dead_enemies() -> void:
 		_message(Game.last_report + " Нажми Esc для возвращения на карту.")
 
 func _strike() -> void:
-	if tactics or not encounter_active or encounter_done:
+	if tactics or not encounter_active or encounter_done or attack_cooldown > 0.0:
 		return
+	attack_cooldown = 0.45
 	var nearest: Dictionary = {}
 	var best := 3.7
 	for enemy in enemies:
@@ -388,49 +425,57 @@ func _strike() -> void:
 	_refresh()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		camera_rig.mouse_move(event.relative, Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT), Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE), Input.is_key_pressed(KEY_SHIFT))
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_ESCAPE:
-				_return_to_map()
-			KEY_TAB:
-				tactics = not tactics
-				building = false
-				if tactics:
-					tactical_camera.make_current()
+				if building:
+					building = false
 				else:
-					third_camera.make_current()
-				_refresh()
+					_return_to_map()
+			KEY_TAB:
+				_set_tactics(not tactics)
 			KEY_SPACE:
+				if not tactics and player.is_on_floor():
+					player.velocity.y = 7.0
+			KEY_F:
 				_strike()
+			KEY_1:
+				_order_follow()
+			KEY_2:
+				_order_hold()
 			KEY_R:
 				if building:
 					building_yaw += PI / 2.0
-					_message("Стена повернута на 90°. ЛКМ — разместить.")
+					_message("Стена повернута на 90 градусов.")
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if tactics and building:
-				_try_place_wall(event.position)
-			else:
-				_strike()
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			building = false
-			_refresh()
-		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and tactics:
-			zoom = maxf(12.0, zoom - 3.0)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and tactics:
-			zoom = minf(48.0, zoom + 3.0)
+		match event.button_index:
+			MOUSE_BUTTON_LEFT:
+				if tactics and building:
+					_try_place_wall(event.position)
+				elif not tactics:
+					_strike()
+			MOUSE_BUTTON_RIGHT:
+				if tactics:
+					if building:
+						building = false
+					else:
+						_order_at(event.position)
+			MOUSE_BUTTON_WHEEL_UP:
+				camera_rig.wheel(true)
+			MOUSE_BUTTON_WHEEL_DOWN:
+				camera_rig.wheel(false)
 
 func _try_place_wall(screen: Vector2) -> void:
 	if Game.destination != "castle" or not Game.can_place_wall():
 		_message("Недостаточно ресурсов: нужно 8 дерева и 6 камня (не более 24 стен).")
 		return
-	var ray_start := tactical_camera.project_ray_origin(screen)
-	var ray_end := ray_start + tactical_camera.project_ray_normal(screen) * 240.0
-	var query := PhysicsRayQueryParameters3D.create(ray_start, ray_end)
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if hit.is_empty():
+	var at := _ground_at(screen)
+	if at == Vector3.INF:
+		_message("Нельзя строить за пределами локации.")
 		return
-	var at: Vector3 = hit["position"]
 	if Game.place_wall(at, building_yaw):
 		_spawn_wall(snappedf(at.x, 1), snappedf(at.z, 1), building_yaw)
 		_message("Стена построена. ЛКМ — следующая, R — повернуть, ПКМ — отмена.")
@@ -442,8 +487,7 @@ func _toggle_build() -> void:
 	if Game.destination != "castle" or encounter_active:
 		return
 	if not tactics:
-		tactics = true
-		tactical_camera.make_current()
+		_set_tactics(true)
 	building = not building
 	_message("Режим стройки. ЛКМ на земле — стена (8 дерева, 6 камня). R — поворот. ПКМ — выход." if building else "Строительство завершено.")
 	_refresh()
@@ -452,8 +496,7 @@ func _begin_defense() -> void:
 	if Game.destination != "castle" or encounter_active:
 		return
 	building = false
-	tactics = false
-	third_camera.make_current()
+	_set_tactics(false)
 	defending = true
 	encounter_done = false
 	encounter_active = true
@@ -495,5 +538,5 @@ func _refresh() -> void:
 	var where := "ЗАМОК" if Game.destination == "castle" else ("ДЕРЕВНЯ" if Game.destination == "village" else "ЛАГЕРЬ")
 	hud.text = ("%s  |  %s  |  Здоровье %d/100\n"
 		+ "Золото %d  Дерево %d  Камень %d  Еда %d  Солдаты %d\n"
-		+ "TAB: камера  •  WASD: движение  •  ЛКМ/Space: удар  •  Esc: карта"
+		+ ("TAB: герой  WASD: карта  Q/E: поворот  MMB: обзор  ПКМ: приказ  1/2: режим отряда" if tactics else "TAB: тактика  WASD: движение  ПКМ+мышь: камера  колесо: масштаб  Shift: бег  Space: прыжок  ЛКМ/F: удар")
 	) % [where, mode, Game.player_health, Game.gold, Game.wood, Game.stone, Game.food, Game.soldiers]

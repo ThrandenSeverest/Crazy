@@ -39,3 +39,6 @@ Be the hero or become a feared Dark Lord. Create your own villain fortress, recr
 - Procedural placeholder primitive meshes, no binary art assets in v0.1.
 - Prefer resource-driven units and buildings after vertical-slice tests.
 - Automate import/runtime checks in GitHub Actions.
+
+## Control update
+Mouse-orbit third-person camera with wall avoidance; tactical orbit, pan and zoom; camera-relative RPG movement, jump and sprint; basic squad follow/hold/move-to orders. Troops still use direct steering, not obstacle-aware navigation.
