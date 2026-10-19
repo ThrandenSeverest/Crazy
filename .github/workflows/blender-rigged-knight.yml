@@ -1,0 +1,50 @@
+name: Blender Source-Geometry Experiment
+
+on:
+  push:
+    branches: [art/blender-character-rebuild]
+    paths:
+      - 'blender_licensed/**'
+      - '.github/workflows/blender-rigged-knight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-rigged-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actual Blender
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
+          blender -b --python-expr 'import bpy; print("BLENDER_VERSION", bpy.app.version_string)'
+      - name: Download actual CC0 mesh and skeleton (not code-generated shapes)
+        run: |
+          mkdir -p /tmp/crazy-source
+          curl --fail --location --retry 3 --user-agent "Mozilla/5.0" --referer "https://opengameart.org/content/knight-rigged-mid-poly" \
+            -o /tmp/crazy-source/Knight.blend \
+            'https://opengameart.org/sites/default/files/Knight_0.blend'
+          test "$(stat -c %s /tmp/crazy-source/Knight.blend)" -gt 300000
+          file /tmp/crazy-source/Knight.blend
+          head -c 7 /tmp/crazy-source/Knight.blend | grep -a -q 'BLENDER'
+      - name: Open source project and render real meshes from 3 angles
+        env:
+          CRAZY_SOURCE_BLEND: /tmp/crazy-source/Knight.blend
+          CRAZY_OUT: build/cc0-source-review
+        run: |
+          blender -b -t 4 --python blender_licensed/inspect_cc0_knight.py | tee /tmp/blender-inspection.log
+          grep -q 'REAL_BLENDER_IMPORT_AND_RENDER_DONE' /tmp/blender-inspection.log
+          test -s build/cc0-source-review/Crazy_Knight_Source_Inspection.blend
+          for v in front side back; do test -s "build/cc0-source-review/$v.png"; done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Crazy-Blender-CC0-Source
+          path: |
+            build/cc0-source-review/**
+          if-no-files-found: warn
+          retention-days: 14
