@@ -1,0 +1,47 @@
+name: Blender AI Armor Add-on Validation
+
+on:
+  push:
+    branches: [art/blender-character-rebuild]
+    paths:
+      - 'blender_ai/**'
+      - '.github/workflows/blender-ai-addon.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  blender-addon:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
+      - name: Validate real Blender add-on registration and equipment slots
+        run: |
+          blender -b -t 2 --python-expr '
+          import bpy, runpy
+          add = runpy.run_path("blender_ai/crazy_ai_armor.py",run_name="__main__")
+          assert bpy.types.Scene.bl_rna.properties.get("crazy_ai_config") is not None
+          p=bpy.context.scene.crazy_ai_config
+          assert p.slot == "HELMET"
+          assert len(add["ARMOR_SLOTS"]) >= 8
+          assert "crazy_ai.generate_armor" == add["CRAZY_AI_OT_generate"].bl_idname
+          print("CRAZY_AI_ARMOR_ADDON_REGISTERED", bpy.app.version_string)
+          '
+      - name: Verify generator never substitutes primitives
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('blender_ai/crazy_ai_armor.py').read_text()
+          assert 'bpy.ops.import_scene.gltf' in s
+          assert 'payload[:4] != b"glTF"' in s
+          assert 'primitive_cube_add' not in s
+          assert 'primitive_cylinder_add' not in s
+          assert 'primitive_uv_sphere_add' not in s
+          print('REAL_MESH_IMPORT_ONLY')
+          PY

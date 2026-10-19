@@ -1,0 +1,41 @@
+name: Blender Only - Hero Test 01
+
+on:
+  push:
+    branches:
+      - art/blender-character-rebuild
+    paths:
+      - 'blender_test01/**'
+      - '.github/workflows/blender-test01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  blender-sculpt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender from Ubuntu package repository
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
+          blender -b --python-expr 'import bpy; print("REAL BLENDER", bpy.app.version_string)'
+      - name: Create editable native Blender model and render 4 angles
+        run: |
+          mkdir -p build/blender-test01
+          blender -b -t 4 --python blender_test01/model_knight.py -- "$PWD/build/blender-test01" | tee build/blender-test01/blender.log
+          test -s build/blender-test01/Crazy_Warlord_Blender_Test01.blend
+          for f in 01_front 02_back 03_side 04_helmet; do test -s "build/blender-test01/${f}.png"; done
+          grep -q 'BLENDER TEST FINISHED' build/blender-test01/blender.log
+      - name: Audit actual native .blend contents
+        run: |
+          blender -b build/blender-test01/Crazy_Warlord_Blender_Test01.blend -t 2 --python-expr 'import bpy; a=[o for o in bpy.data.objects if o.type=="MESH"]; print("BLENDER_OBJECT_AUDIT",len(a),[(c.name,len(c.objects)) for c in bpy.data.collections]); assert len(a)>70; assert "01_HELMET" in bpy.data.collections; assert "02_CUIRASS" in bpy.data.collections; assert "09_CAPE" in bpy.data.collections'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Crazy-REAL-Blender-Test01
+          path: build/blender-test01/*
+          if-no-files-found: error
+          retention-days: 30
